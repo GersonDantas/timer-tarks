@@ -1,17 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { differenceInSeconds } from 'date-fns'
-import { Play } from 'phosphor-react'
+import { HandPalm, Play } from 'phosphor-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import * as zod from 'zod'
 
+import { } from './styles'
 import {
   CountDownContainer,
   FormContainer,
   HomeContainer,
   MinutesAmountInput,
   Separator,
-  StartCountDownButton,
+  StartCountdownButton,
+  StopCountdownButton,
   TaskInput,
 } from './styles'
 
@@ -29,7 +31,8 @@ interface Cycle {
   id: string
   task: string
   minutesAmount: number,
-  startDate: Date
+  startDate: Date,
+  interruptedDate?: Date
 }
 
 export function Home() {
@@ -56,8 +59,22 @@ export function Home() {
 
     setCycles((oldValue: Cycle[]) => [...oldValue, newCycle])
     setActiveCycleId(id)
+    setAmountSecondsPassed(0)
 
     reset()
+  }
+
+  function handleInterruptCycle() {
+    setCycles(
+      cycles.map((cycle: Cycle) => {
+        if (cycle.id === activeCycleId) {
+          return { ...cycle, interruptedDate: new Date() }
+        } else {
+          return cycle
+        }
+      }))
+
+    setActiveCycleId(null)
   }
 
   const activeCycle = cycles.find(({ id }) => id === activeCycleId)
@@ -91,8 +108,14 @@ export function Home() {
   const minutes = String(minutesAmount).padStart(2, '0')
   const seconds = String(secondsAmount).padStart(2, '0')
 
+  useEffect(() => {
+    if (activeCycle) {
+      document.title = `${minutes}:${seconds}`
+    }
+  }, [activeCycle, minutes, seconds])
+
   const task = watch('task')
-  const isSubmitDisabled = !task
+  const isSubmitDisable = !task
 
   return (
     <HomeContainer>
@@ -103,6 +126,7 @@ export function Home() {
             type="text"
             id="task"
             list="task-suggestions"
+            disabled={!!activeCycle}
             placeholder="Dê um nome para seu projeto"
             {...register('task')}
           />
@@ -121,6 +145,7 @@ export function Home() {
             id="minutesAmount"
             placeholder="00"
             step={5}
+            disabled={!!activeCycle}
             min={5}
             max={60}
             {...register('minutesAmount', { valueAsNumber: true })}
@@ -137,10 +162,19 @@ export function Home() {
           <span>{seconds[1]}</span>
         </CountDownContainer>
 
-        <StartCountDownButton disabled={isSubmitDisabled} type="submit">
-          <Play size={24} />
-          começar
-        </StartCountDownButton>
+        {activeCycle
+          ? (
+            <StopCountdownButton onClick={handleInterruptCycle} type="button">
+              <HandPalm size={24} />
+              Interromper
+            </StopCountdownButton>
+            )
+          : (
+            <StartCountdownButton disabled={isSubmitDisable} type="submit">
+              <Play size={24} />
+              Começar
+            </StartCountdownButton>
+            )}
       </form>
     </HomeContainer>
   )
